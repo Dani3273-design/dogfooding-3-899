@@ -306,3 +306,63 @@ Visibility: 12.0 km
 **问：怎么改成预测其他城市？**
 
 > 修改 `config/config.py` 中的 `CITY_NAME` 即可，例如 'Beijing'、'Shanghai'。
+
+---
+
+## DevOps 容器化部署
+
+### Docker 容器运行
+
+本项目已支持 Docker 容器化部署，基于 Ubuntu 24.04 基础镜像，采用目录挂载方式运行，不将代码打包进镜像，便于开发调试。
+
+**构建镜像（仅包含Python3.9运行环境和依赖库）：
+```bash
+docker build -t weather-prediction .
+```
+
+**默认启动（默认打印环境信息：
+```bash
+docker run --rm weather-prediction
+```
+
+**挂载项目目录到容器运行（推荐）：
+```bash
+# 查看数据信息
+docker run --rm -v $(pwd):/app weather-prediction python3 main.py info
+
+# 更新数据并训练模型
+docker run --rm -v $(pwd):/app weather-prediction python3 main.py auto
+
+# 预测明天天气
+docker run --rm -v $(pwd):/app weather-prediction python3 main.py tomorrow
+```
+
+---
+
+## CI/CD 自动部署
+
+本项目配置了 GitHub Actions 自动部署流程，当 `test` 分支有新代码提交时，将自动触发部署流程。
+
+### 部署配置
+
+- **触发条件**：`test` 分支收到 push 事件
+- **目标服务器**：`public.stoprefactoring.com:22`
+- **部署路径**：`/public/script/weather/`
+- **部署方式**：SSH 密钥认证
+
+### 配置 Secrets
+
+在 GitHub 仓库 Settings -> Secrets and variables -> Actions 中添加以下 Secrets：
+
+| Secret 名称 | 说明 |
+|------------|------|
+| `SSH_USERNAME` | 服务器 SSH 登录用户名 |
+| `SSH_PRIVATE_KEY` | SSH 私钥内容 |
+
+### 部署流程
+
+1. 开发人员推送代码到 `test` 分支
+2. GitHub Actions 自动触发工作流
+3. 检出最新代码
+4. 通过 SCP 将整个仓库文件传输到目标服务器指定目录
+5. 完成自动部署

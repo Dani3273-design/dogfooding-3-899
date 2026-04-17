@@ -1,0 +1,25 @@
+name: CI/CD Deploy to Server
+
+on:
+  push:
+    branches: [ test ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Deploy to server via SSH
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: public.stoprefactoring.com
+        port: 22
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "."
+        target: "/public/script/weather/"
+        strip_components: 0
+        rm: false
