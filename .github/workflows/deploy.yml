@@ -1,0 +1,43 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - test
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        
+    - name: Add host to known hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -p 22 -H public.stoprefactoring.com >> ~/.ssh/known_hosts
+        
+    - name: Deploy to server
+      run: |
+        # 创建远程目录（如果不存在）
+        ssh -p 22 root@public.stoprefactoring.com "mkdir -p /public/script/weather"
+        
+        # 使用rsync同步文件到服务器
+        rsync -avz --delete \
+          -e "ssh -p 22" \
+          --exclude='.git' \
+          --exclude='.github' \
+          --exclude='__pycache__' \
+          --exclude='*.pyc' \
+          --exclude='.DS_Store' \
+          --exclude='memory/*.csv' \
+          --exclude='model/*.keras' \
+          ./ root@public.stoprefactoring.com:/public/script/weather/
+        
+        echo "Deployment completed successfully!"
