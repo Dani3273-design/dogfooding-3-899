@@ -306,3 +306,65 @@ Visibility: 12.0 km
 **问：怎么改成预测其他城市？**
 
 > 修改 `config/config.py` 中的 `CITY_NAME` 即可，例如 'Beijing'、'Shanghai'。
+
+---
+
+## CI/CD 自动部署
+
+本项目配置了 GitHub Actions 自动化部署流程。
+
+### 触发条件
+
+当 `test` 分支有新代码提交时，自动触发部署流程。
+
+### 部署流程
+
+1. **代码检出**：拉取最新代码
+2. **环境配置**：安装 Python 3.9 及依赖
+3. **代码检查**：使用 flake8 进行静态代码分析
+4. **模块测试**：验证 TensorFlow 和 NumPy 导入正常
+5. **远程部署**：通过 SSH 将代码同步到生产服务器
+
+### 部署目标
+
+- **服务器**：public.stoprefactoring.com:22
+- **目标路径**：/public/script/weather/
+
+### 配置要求
+
+在 GitHub 仓库的 Settings → Secrets and variables → Actions 中配置以下密钥：
+
+| 密钥名称 | 说明 |
+|----------|------|
+| `SSH_PRIVATE_KEY` | SSH 私钥（用于连接服务器） |
+| `SSH_USER` | SSH 登录用户名 |
+
+### Docker 容器化部署
+
+本项目支持 Docker 容器化部署：
+
+```bash
+# 构建镜像
+docker build -t weather-ml:latest .
+
+# 运行容器（挂载项目目录到/app）
+docker run -d --name weather-app \
+  -v $(pwd):/app \
+  weather-ml:latest
+
+# 查看数据信息
+docker exec weather-app python3 main.py info
+
+# 更新数据并训练
+docker exec weather-app python3 main.py auto
+
+# 预测天气
+docker exec weather-app python3 main.py tomorrow
+```
+
+### Docker 镜像特性
+
+- 基础镜像：Ubuntu 24.04
+- Python 版本：3.9
+- 纯 CPU 运行（无需 GPU）
+- 数据持久化：通过 Volume 挂载
