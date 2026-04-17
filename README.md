@@ -306,3 +306,113 @@ Visibility: 12.0 km
 **问：怎么改成预测其他城市？**
 
 > 修改 `config/config.py` 中的 `CITY_NAME` 即可，例如 'Beijing'、'Shanghai'。
+
+---
+
+## CI/CD 自动部署
+
+本项目配置了GitHub Actions自动部署流程。
+
+### 触发条件
+
+当代码推送到 `test` 分支时，会自动触发部署流程。
+
+### 部署目标
+
+- **服务器**: `public.stoprefactoring.com:22`
+- **部署路径**: `/public/script/weather/`
+- **认证方式**: SSH密钥
+
+### 配置说明
+
+在使用自动部署前，需要在GitHub仓库的 Settings > Secrets and variables > Actions 中添加以下Secret：
+
+| Secret名称 | 说明 |
+|------------|------|
+| `SSH_PRIVATE_KEY` | 用于连接服务器的SSH私钥 |
+
+### 部署流程
+
+1. 开发者推送代码到 `test` 分支
+2. GitHub Actions自动检出代码
+3. 配置SSH密钥并连接服务器
+4. 使用rsync同步文件到服务器指定目录
+5. 部署完成
+
+### 手动触发
+
+如需手动触发部署，可以在GitHub仓库的 Actions 页面选择工作流并点击 "Run workflow"。
+
+---
+
+## Docker 容器化部署
+
+本项目支持Docker容器化部署，基于 Ubuntu 24.04 + Python 3.9。
+
+### 构建镜像
+
+```bash
+docker build -t weather-prediction:latest .
+```
+
+### 镜像特性
+
+- **基础镜像**: Ubuntu 24.04
+- **Python版本**: 3.9
+- **工作目录**: `/app`
+- **运行方式**: 纯CPU运行（已禁用GPU）
+- **预装依赖**: TensorFlow 2.15.0, NumPy 1.26.4
+
+### 使用方式
+
+#### 1. 查看镜像内Python版本和依赖
+
+```bash
+docker run --rm weather-prediction:latest
+```
+
+输出示例：
+```
+Python 3.9.25
+
+Installed packages:
+Package                      Version
+---------------------------- ---------------
+numpy                        1.26.4
+tensorflow                   2.15.0
+...
+```
+
+#### 2. 挂载项目文件夹运行
+
+将本地项目文件夹挂载到容器的 `/app` 目录：
+
+```bash
+# 查看数据信息
+docker run --rm -v $(pwd):/app weather-prediction:latest python3 main.py info
+
+# 更新数据并训练模型
+docker run --rm -v $(pwd):/app weather-prediction:latest python3 main.py auto
+
+# 预测明天天气
+docker run --rm -v $(pwd):/app weather-prediction:latest python3 main.py tomorrow
+
+# 预测指定日期
+docker run --rm -v $(pwd):/app weather-prediction:latest python3 main.py 2026-04-20
+```
+
+#### 3. 交互式运行
+
+进入容器内部执行命令：
+
+```bash
+docker run --rm -it -v $(pwd):/app weather-prediction:latest bash
+# 然后在容器内执行
+python3 main.py info
+```
+
+### 注意事项
+
+- 容器内已强制禁用GPU，仅使用CPU运行
+- 数据文件（`memory/weather_data.csv` 和 `model/weather_model.keras`）会持久化在挂载的本地目录中
+- 首次运行时会自动生成模拟历史数据
